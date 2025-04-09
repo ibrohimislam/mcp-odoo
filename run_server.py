@@ -6,10 +6,12 @@ Uses the same approach as in the official MCP SDK examples
 import sys
 import os
 import asyncio
-import anyio
+import uvicorn
 import logging
 import datetime
 
+from starlette.applications import Starlette
+from starlette.routing import Mount, Host
 from mcp.server.stdio import stdio_server
 from mcp.server.lowlevel import Server
 import mcp.types as types
@@ -69,16 +71,11 @@ def main() -> int:
         logger.info(f"MCP object type: {type(mcp)}")
         
         # Run server in stdio mode like the official examples
-        async def arun():
-            logger.info("Starting Odoo MCP server with stdio transport...")
-            async with stdio_server() as streams:
-                logger.info("Stdio server initialized, running MCP server...")
-                await mcp._mcp_server.run(
-                    streams[0], streams[1], mcp._mcp_server.create_initialization_options()
-                )
+        logger.info("Starting Odoo MCP server with sse transport...")
+        app = Starlette(routes=[Mount('/', app=mcp.sse_app())])
+        app.router.routes.append(Host('mcp.acme.corp', app=mcp.sse_app()))
                 
-        # Run server
-        anyio.run(arun)
+        uvicorn.run(app, host='0.0.0.0', port=8000)
         logger.info("MCP server stopped normally")
         return 0
         
