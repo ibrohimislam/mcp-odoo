@@ -203,10 +203,15 @@ def search_record(
     Parameters:
         model_name: Name of the Odoo model (e.g., 'res.partner')
         domain: Search domain
-        fieds: Select field
+        fields: Select field
     """
     try:
         odoo_client = get_odoo_client()
+        _logger.info({
+            "model_name": model_name,
+            "domain": domain,
+            "fields": fields,
+        })
         results = odoo_client.search_read(model_name, domain, fields=fields)
         _logger.info(results)
         return {"success": True, "result": results}
