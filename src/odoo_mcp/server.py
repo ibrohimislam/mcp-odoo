@@ -4,6 +4,7 @@ MCP server for Odoo integration
 Provides MCP tools and resources for interacting with Odoo ERP systems
 """
 
+import logging
 import json
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
