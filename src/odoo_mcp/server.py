@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from .odoo_client import OdooClient, get_odoo_client
 
+_logger = logging.getLogger(__name__)
 
 @dataclass
 class AppContext:
@@ -137,6 +138,7 @@ def list_models(ctx: Context,) -> Dict[str, Any]:
     try:
         odoo_client = get_odoo_client()
         models = odoo_client.get_models()
+        _logger.info(models)
         return {"success": True, "result": models}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -157,6 +159,7 @@ def model_info(
         model_info = odoo_client.get_model_info(model_name)
         fields = odoo_client.get_model_fields(model_name)
         model_info["fields"] = fields
+        _logger.info(model_info)
         return {"success": True, "result": model_info}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -178,6 +181,7 @@ def record(
         odoo_client = get_odoo_client()
         record_id_int = int(record_id)
         record = odoo_client.read_records(model_name, [record_id_int])
+        _logger.info(record)
         if not record:
             return {"success": False, "error": f"Record {record_id_int} not found."}
         return {"success": True, "result": record}
@@ -203,6 +207,7 @@ def search_record(
     try:
         odoo_client = get_odoo_client()
         results = odoo_client.search_read(model_name, domain, fields=fields)
+        _logger.info(results)
         return {"success": True, "result": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
