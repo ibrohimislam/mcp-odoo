@@ -207,7 +207,7 @@ def search_record(
     """
     try:
         odoo_client = get_odoo_client()
-        results = odoo_client.search_read(model_name, domain, fields)
+        results = odoo_client.execute_method(model_name, 'search_read', domain, fields=fields)
         _logger.info(results)
         return {"success": True, "result": results}
     except Exception as e:
