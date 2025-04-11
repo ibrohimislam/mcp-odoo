@@ -21,32 +21,32 @@ from odoo_mcp.server import mcp  # FastMCP instance from our code
 
 def setup_logging():
     """Set up logging to both console and file"""
-    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
-    os.makedirs(log_dir, exist_ok=True)
+    # log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    # os.makedirs(log_dir, exist_ok=True)
     
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = os.path.join(log_dir, f"mcp_server_{timestamp}.log")
+    # timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    # log_file = os.path.join(log_dir, f"mcp_server_{timestamp}.log")
     
     # Configure logging
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     
     # Console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    # console_handler = logging.StreamHandler()
+    # console_handler.setLevel(logging.INFO)
     
     # File handler
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.DEBUG)
+    # file_handler = logging.FileHandler(log_file)
+    # file_handler.setLevel(logging.DEBUG)
     
     # Format for both handlers
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-    file_handler.setFormatter(formatter)
+    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # console_handler.setFormatter(formatter)
+    # file_handler.setFormatter(formatter)
     
     # Add handlers to logger
-    logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
+    # logger.addHandler(console_handler)
+    # logger.addHandler(file_handler)
     
     return logger
 
