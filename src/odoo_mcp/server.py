@@ -169,8 +169,6 @@ def record(
         record_id: ID of the record
     """
     try:
-        odoo_client = get_odoo_client()
-        results = odoo_client.search_read(model_name, domain, fields=fields)
         return {"success": True, "result": get_record(model_name, record_id)}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -191,8 +189,8 @@ def search_record(
         domain: Search domain
         fieds: Select field
     """
-    odoo = ctx.request_context.lifespan_context.odoo
     try:
+        odoo_client = get_odoo_client()
         results = odoo_client.search_read(model_name, domain, fields=fields)
         return {"success": True, "result": json.dumps(results, indent=2)}
     except Exception as e:
