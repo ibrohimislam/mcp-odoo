@@ -174,27 +174,27 @@ def record(
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(description="Search for records matching the domain")
-def search_record(
-    ctx: Context,
-    model_name: str,
-    domain: List=[],
-    fields: List=[],
-) -> Dict[str, Any]:
-    """
-    Search for records that match a domain
+# @mcp.tool(description="Search for records matching the domain")
+# def search_record(
+#     ctx: Context,
+#     model_name: str,
+#     domain: List=[],
+#     fields: List=[],
+# ) -> Dict[str, Any]:
+#     """
+#     Search for records that match a domain
 
-    Parameters:
-        model_name: Name of the Odoo model (e.g., 'res.partner')
-        domain: Search domain
-        fieds: Select field
-    """
-    try:
-        odoo_client = get_odoo_client()
-        results = odoo_client.search_read(model_name, domain, fields=fields)
-        return {"success": True, "result": results}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+#     Parameters:
+#         model_name: Name of the Odoo model (e.g., 'res.partner')
+#         domain: Search domain
+#         fieds: Select field
+#     """
+#     try:
+#         odoo_client = get_odoo_client()
+#         results = odoo_client.search_read(model_name, domain, fields=fields)
+#         return {"success": True, "result": results}
+#     except Exception as e:
+#         return {"success": False, "error": str(e)}
 
 @mcp.tool(description="Execute a custom method on an Odoo model")
 def execute_method(
