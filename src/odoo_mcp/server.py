@@ -123,7 +123,7 @@ def search_records_resource(model_name: str, domain: str) -> str:
     """
     odoo_client = get_odoo_client()
     try:
-        results = odoo_client.search_read(model_name, domain_list, limit=limit)
+        results = odoo_client.search_read(model_name, domain, limit=limit)
         return json.dumps(results, indent=2)
     except Exception as e:
         return json.dumps({"error": str(e)}, indent=2)
