@@ -170,15 +170,18 @@ def search_record(
     ctx: Context,
     model_name: str,
     domain: List=[],
+    fields: List=[],
 ) -> str:
     """
     Search for records that match a domain
 
     Parameters:
         model_name: Name of the Odoo model (e.g., 'res.partner')
-        domain: Search domain')
+        domain: Search domain
+        fieds: Select field
     """
-    return search_records_resource(model_name, domain)
+    results = odoo_client.search_read(model_name, domain, fields=fields)
+    return json.dumps(results, indent=2)
 
 
 @mcp.tool(description="Execute a custom method on an Odoo model")
