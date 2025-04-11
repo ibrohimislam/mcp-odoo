@@ -6,11 +6,14 @@ import json
 import os
 import re
 import socket
+import logging
 import urllib.parse
 
 import http.client
 import xmlrpc.client
 
+
+_logger = logging.getLogger(__name__)
 
 class OdooClient:
     """Client for interacting with Odoo via XML-RPC"""
@@ -71,12 +74,9 @@ class OdooClient:
             timeout=self.timeout, use_https=is_https, verify_ssl=self.verify_ssl
         )
 
-        print(f"Connecting to Odoo at: {self.url}", file=os.sys.stderr)
-        print(f"  Hostname: {self.hostname}", file=os.sys.stderr)
-        print(
-            f"  Timeout: {self.timeout}s, Verify SSL: {self.verify_ssl}",
-            file=os.sys.stderr,
-        )
+        _logger.info(f"Connecting to Odoo at: {self.url}")
+        _logger.info(f"  Hostname: {self.hostname}")
+        _logger.info(f"  Timeout: {self.timeout}s, Verify SSL: {self.verify_ssl}")
 
         # Thiết lập endpoints
         self._common = xmlrpc.client.ServerProxy(
@@ -87,15 +87,9 @@ class OdooClient:
         )
 
         # Xác thực và lấy user ID
-        print(
-            f"Authenticating with database: {self.db}, username: {self.username}",
-            file=os.sys.stderr,
-        )
+        _logger.info(f"Authenticating with database: {self.db}, username: {self.username}")
         try:
-            print(
-                f"Making request to {self.hostname}/xmlrpc/2/common (attempt 1)",
-                file=os.sys.stderr,
-            )
+            _logger.info(f"Making request to {self.hostname}/xmlrpc/2/common (attempt 1)")
             self.uid = self._common.authenticate(
                 self.db, self.username, self.password, {}
             )
@@ -103,11 +97,11 @@ class OdooClient:
                 raise ValueError(
                     "Authentication failed: Invalid username or password")
         except (socket.error, socket.timeout, ConnectionError, TimeoutError) as e:
-            print(f"Connection error: {str(e)}", file=os.sys.stderr)
+            _logger.info(f"Connection error: {str(e)}")
             raise ConnectionError(
                 f"Failed to connect to Odoo server: {str(e)}")
         except Exception as e:
-            print(f"Authentication error: {str(e)}", file=os.sys.stderr)
+            _logger.info(f"Authentication error: {str(e)}")
             raise ValueError(f"Failed to authenticate with Odoo: {str(e)}")
 
     def _execute(self, model, method, *args, **kwargs):
@@ -175,7 +169,7 @@ class OdooClient:
 
             return models_info
         except Exception as e:
-            print(f"Error retrieving models: {str(e)}", file=os.sys.stderr)
+            _logger.info(f"Error retrieving models: {str(e)}")
             return {"model_names": [], "models_details": {}, "error": str(e)}
 
     def get_model_info(self, model_name):
@@ -207,7 +201,7 @@ class OdooClient:
 
             return result[0]
         except Exception as e:
-            print(f"Error retrieving model info: {str(e)}", file=os.sys.stderr)
+            _logger.info(f"Error retrieving model info: {str(e)}")
             return {"error": str(e)}
 
     def get_model_fields(self, model_name):
@@ -230,7 +224,7 @@ class OdooClient:
             fields = self._execute(model_name, "fields_get")
             return fields
         except Exception as e:
-            print(f"Error retrieving fields: {str(e)}", file=os.sys.stderr)
+            _logger.info(f"Error retrieving fields: {str(e)}")
             return {"error": str(e)}
 
     def search_read(
@@ -270,7 +264,7 @@ class OdooClient:
             result = self._execute(model_name, "search_read", domain, kwargs)
             return result
         except Exception as e:
-            print(f"Error in search_read: {str(e)}", file=os.sys.stderr)
+            _logger.info(f"Error in search_read: {str(e)}")
             return []
 
     def read_records(self, model_name, ids, fields=None):
@@ -299,7 +293,7 @@ class OdooClient:
             result = self._execute(model_name, "read", ids, kwargs)
             return result
         except Exception as e:
-            print(f"Error reading records: {str(e)}", file=os.sys.stderr)
+            _logger.info(f"Error reading records: {str(e)}")
             return []
 
 
@@ -348,7 +342,7 @@ class RedirectTransport(xmlrpc.client.Transport):
         redirects = 0
         while redirects < self.max_redirects:
             try:
-                print(f"Making request to {host}{handler}", file=os.sys.stderr)
+                _logger.info(f"Making request to {host}{handler}")
                 return super().request(host, handler, request_body, verbose)
             except xmlrpc.client.ProtocolError as err:
                 if err.errcode in (301, 302, 303, 307, 308) and err.headers.get(
@@ -365,7 +359,7 @@ class RedirectTransport(xmlrpc.client.Transport):
                 else:
                     raise
             except Exception as e:
-                print(f"Error during request: {str(e)}", file=os.sys.stderr)
+                _logger.info(f"Error during request: {str(e)}")
                 raise
 
         raise xmlrpc.client.ProtocolError(
@@ -427,12 +421,12 @@ def get_odoo_client():
         "1", "true", "yes"]
 
     # Print detailed configuration
-    print("Odoo client configuration:", file=os.sys.stderr)
-    print(f"  URL: {config['url']}", file=os.sys.stderr)
-    print(f"  Database: {config['db']}", file=os.sys.stderr)
-    print(f"  Username: {config['username']}", file=os.sys.stderr)
-    print(f"  Timeout: {timeout}s", file=os.sys.stderr)
-    print(f"  Verify SSL: {verify_ssl}", file=os.sys.stderr)
+    _logger.info("Odoo client configuration:")
+    _logger.info(f"  URL: {config['url']}")
+    _logger.info(f"  Database: {config['db']}")
+    _logger.info(f"  Username: {config['username']}")
+    _logger.info(f"  Timeout: {timeout}s")
+    _logger.info(f"  Verify SSL: {verify_ssl}")
 
     return OdooClient(
         url=config["url"],
