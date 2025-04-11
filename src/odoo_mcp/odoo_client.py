@@ -199,7 +199,7 @@ class OdooClient:
                 "ir.model",
                 "search_read",
                 [("model", "=", model_name)],
-                {"fields": ["name", "model"]},
+                {"field_id": ["name", "model"]},
             )
 
             if not result:
