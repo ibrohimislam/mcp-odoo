@@ -194,8 +194,9 @@ def get_record(
 def search_record(
     ctx: Context,
     model_name: str,
-    domain: List[str|List[str]]=[],
-    fields: List[str]=[],
+    domain: List[str|List[str]] = [],
+    fields: Optional[List[str]] = None,
+    limit: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Search for records that match a domain
@@ -207,7 +208,12 @@ def search_record(
     """
     try:
         odoo_client = get_odoo_client()
-        results = odoo_client.execute_method(model_name, 'search_read', domain, fields=fields)
+        kwargs = {}
+        if fields != None:
+            kwargs['fields'] = fields
+        if limit != None:
+            kwargs['limit'] = limit
+        results = odoo_client.execute_method(model_name, 'search_read', domain, **kwargs)
         _logger.info(results)
         return {"success": True, "result": results}
     except Exception as e:
