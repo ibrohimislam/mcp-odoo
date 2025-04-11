@@ -173,7 +173,7 @@ def record(
     return get_record(model_name, record_id)
 
 
-@mcp.tool(description="Search for records matching the domain")
+@mcp.tool(description="Search for records matching the domain (JSON Format e.g., '[[\"name\", \"ilike\", \"test\"]]')")
 def search_record(
     ctx: Context,
     model_name: str,
