@@ -134,7 +134,10 @@ def search_records_resource(model_name: str, domain: str) -> str:
 @mcp.tool(description="List all available models in the Odoo system")
 def list_models(ctx: Context,) -> str:
     """Lists all available models in the Odoo system"""
-    return get_models()
+    try:
+        return {"success": True, "result": get_models()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @mcp.tool(description="Get detailed information about a specific model including fields")
 def model_info(
@@ -147,7 +150,10 @@ def model_info(
     Parameters:
         model_name: Name of the Odoo model (e.g., 'res.partner')
     """
-    return get_model_info(model_name)
+    try:
+        return {"success": True, "result": get_model_info(model_name)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @mcp.tool(description="Get detailed information of a specific record by ID")
 def record(
@@ -162,7 +168,12 @@ def record(
         model_name: Name of the Odoo model (e.g., 'res.partner')
         record_id: ID of the record
     """
-    return get_record(model_name, record_id)
+    try:
+        odoo_client = get_odoo_client()
+        results = odoo_client.search_read(model_name, domain, fields=fields)
+        return {"success": True, "result": get_record(model_name, record_id)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 @mcp.tool(description="Search for records matching the domain")
@@ -180,9 +191,12 @@ def search_record(
         domain: Search domain
         fieds: Select field
     """
-    results = odoo_client.search_read(model_name, domain, fields=fields)
-    return json.dumps(results, indent=2)
-
+    odoo = ctx.request_context.lifespan_context.odoo
+    try:
+        results = odoo_client.search_read(model_name, domain, fields=fields)
+        return {"success": True, "result": json.dumps(results, indent=2)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @mcp.tool(description="Execute a custom method on an Odoo model")
 def execute_method(
