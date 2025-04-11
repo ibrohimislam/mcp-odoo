@@ -194,8 +194,8 @@ def get_record(
 def search_record(
     ctx: Context,
     model_name: str,
-    domain: List=[],
-    fields: List=[],
+    domain: List[str|List[str]]=[],
+    fields: List[str]=[],
 ) -> Dict[str, Any]:
     """
     Search for records that match a domain
