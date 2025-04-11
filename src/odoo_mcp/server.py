@@ -132,7 +132,7 @@ def search_records_resource(model_name: str, domain: str) -> str:
 # ----- MCP Tools -----
 
 @mcp.tool(description="List all available models in the Odoo system")
-def list_models(ctx: Context,) -> str:
+def list_models(ctx: Context,) -> Dict[str, Any]:
     """Lists all available models in the Odoo system"""
     try:
         return {"success": True, "result": get_models()}
@@ -143,7 +143,7 @@ def list_models(ctx: Context,) -> str:
 def model_info(
     ctx: Context,
     model_name: str,
-) -> str:
+) -> Dict[str, Any]:
     """
     Get information about a specific model
 
@@ -160,7 +160,7 @@ def record(
     ctx: Context,
     model_name: str,
     record_id: str,
-) -> str:
+) -> Dict[str, Any]:
     """
     Get a specific record by ID
 
@@ -180,7 +180,7 @@ def search_record(
     model_name: str,
     domain: List=[],
     fields: List=[],
-) -> str:
+) -> Dict[str, Any]:
     """
     Search for records that match a domain
 
@@ -192,7 +192,7 @@ def search_record(
     try:
         odoo_client = get_odoo_client()
         results = odoo_client.search_read(model_name, domain, fields=fields)
-        return {"success": True, "result": json.dumps(results, indent=2)}
+        return {"success": True, "result": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
