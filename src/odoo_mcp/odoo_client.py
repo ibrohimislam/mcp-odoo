@@ -135,10 +135,8 @@ class OdooClient:
         Examples:
             >>> client = OdooClient(url, db, username, password)
             >>> models = client.get_models()
-            >>> print(len(models))
-            125
-            >>> print(models[:5])
-            ['res.partner', 'res.users', 'res.company', 'res.groups', 'ir.model']
+            >>> print(models)
+            {"res.partner": {"name": "Reset View Architecture Wizard"}}
         """
         try:
             # First search for model IDs
@@ -146,8 +144,6 @@ class OdooClient:
 
             if not model_ids:
                 return {
-                    "model_names": [],
-                    "models_details": {},
                     "error": "No models found",
                 }
 
@@ -161,10 +157,7 @@ class OdooClient:
 
             # For more detailed information, include the full records
             models_info = {
-                "model_names": models,
-                "models_details": {
-                    rec["model"]: {"name": rec.get("name", "")} for rec in result
-                },
+                rec["model"]: {"name": rec.get("name", "")} for rec in result
             }
 
             return models_info
