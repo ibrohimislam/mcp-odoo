@@ -189,6 +189,26 @@ def get_record(
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@mcp.tool(description="Count records matching the domain")
+def search_count(
+    ctx: Context,
+    model_name: str,
+    domain: List[str|List[str]] = [],
+) -> int:
+    """
+    Search for records that match a domain
+
+    Parameters:
+        model_name: Name of the Odoo model (e.g., 'res.partner')
+        domain: Search domain
+    """
+    try:
+        odoo_client = get_odoo_client()
+        results = odoo_client.search_count(model_name, domain)
+        _logger.info(results)
+        return {"success": True, "result": results}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @mcp.tool(description="Search for records matching the domain")
 def search_record(

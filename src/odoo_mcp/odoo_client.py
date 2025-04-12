@@ -220,6 +220,32 @@ class OdooClient:
             _logger.info(f"Error retrieving fields: {str(e)}")
             return {"error": str(e)}
 
+    def search_count(
+        self, model_name, domain
+    ):
+        """
+        Search count for records with specific criteria
+
+        Args:
+            model_name: Name of the model (e.g., 'res.partner')
+            domain: Search domain (e.g., [('is_company', '=', True)])
+            
+        Returns:
+            Count of the matching records
+
+        Examples:
+            >>> client = OdooClient(url, db, username, password)
+            >>> records = client.search_count('res.partner', [('is_company', '=', True)])
+            >>> print(records)
+            5
+        """
+        try:
+            result = self._execute(model_name, "search_count", domain)
+            return result
+        except Exception as e:
+            _logger.info(f"Error in search_read: {str(e)}")
+            return -1
+
     def search_read(
         self, model_name, domain, fields=None, offset=None, limit=None, order=None
     ):
