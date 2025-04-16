@@ -12,8 +12,6 @@ import datetime
 
 from starlette.applications import Starlette
 from starlette.routing import Mount, Host
-from mcp.server.stdio import stdio_server
-from mcp.server.lowlevel import Server
 import mcp.types as types
 
 from odoo_mcp.server import mcp  # FastMCP instance from our code
@@ -40,10 +38,11 @@ def main() -> int:
         
         _logger.info(f"MCP object type: {type(mcp)}")
         
-        # Run server in stdio mode like the official examples
-        _logger.info("Starting Odoo MCP server with sse transport...")
-        app = Starlette(routes=[Mount('/', app=mcp.sse_app())])
-        app.router.routes.append(Host('mcp.acme.corp', app=mcp.sse_app()))
+        # Run server in HTTP mode
+        _logger.info("Starting Odoo MCP server with HTTP transport...")
+        app = mcp.get_app()
+        # Add host route for development
+        app.router.routes.append(Host('mcp.acme.corp', app=app))
                 
         uvicorn.run(app, host='0.0.0.0', port=8000)
         _logger.info("MCP server stopped normally")

@@ -2,53 +2,47 @@
 Command line entry point for the Odoo MCP Server
 """
 import sys
-import asyncio
-import traceback
 import os
+import logging
+import uvicorn
+from importlib import import_module
+from starlette.applications import Starlette
+from starlette.routing import Host
 
 from .server import mcp
 
+_logger = logging.getLogger(__name__)
 
 def main() -> int:
     """
     Run the MCP server
     """
     try:
-        print("=== ODOO MCP SERVER STARTING ===", file=sys.stderr)
-        print(f"Python version: {sys.version}", file=sys.stderr)
-        print("Environment variables:", file=sys.stderr)
+        # Print startup information
+        _logger.info("=== ODOO MCP SERVER STARTING ===")
+        _logger.info(f"Python version: {sys.version}")
+        _logger.info("Environment variables:")
         for key, value in os.environ.items():
             if key.startswith("ODOO_"):
                 if key == "ODOO_PASSWORD":
-                    print(f"  {key}: ***hidden***", file=sys.stderr)
+                    _logger.info(f"  {key}: ***hidden***")
                 else:
-                    print(f"  {key}: {value}", file=sys.stderr)
+                    _logger.info(f"  {key}: {value}")
         
-        # Check if server instance has the run_stdio method
-        methods = [method for method in dir(mcp) if not method.startswith('_')]
-        print(f"Available methods on mcp object: {methods}", file=sys.stderr)
+        _logger.info(f"MCP object type: {type(mcp)}")
         
-        print("Starting MCP server with run() method...", file=sys.stderr)
-        sys.stderr.flush()  # Ensure log information is written immediately
+        # Run server in HTTP mode
+        _logger.info("Starting Odoo MCP server with HTTP transport...")
+        app = mcp.get_app()
+        # Add host route for development
+        app.router.routes.append(Host('mcp.acme.corp', app=app))
         
-        # Use the run() method directly
-        mcp.run()
-        
-        # If execution reaches here, the server exited normally
-        print("MCP server stopped normally", file=sys.stderr)
-        return 0
-    except KeyboardInterrupt:
-        print("MCP server stopped by user", file=sys.stderr)
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+        _logger.info("MCP server stopped normally")
         return 0
     except Exception as e:
-        print(f"Error starting server: {e}", file=sys.stderr)
-        print("Exception details:", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
-        print("\nServer object information:", file=sys.stderr)
-        print(f"MCP object type: {type(mcp)}", file=sys.stderr)
-        print(f"MCP object dir: {dir(mcp)}", file=sys.stderr)
+        _logger.error(f"Error starting server: {e}", exc_info=True)
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

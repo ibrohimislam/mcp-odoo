@@ -9,9 +9,9 @@ import json
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, AsyncIterator, Dict, List, Optional, Union, cast
+from typing import Any, AsyncIterator, Dict, List, Optional, Union, cast, TypeVar, Generic
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server import Context, FastMCP
 from pydantic import BaseModel, Field
 
 from .odoo_client import OdooClient, get_odoo_client
@@ -40,12 +40,73 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         pass
 
 
+# Define a detailed prompt for the MCP tool
+ODOO_PROMPT = """
+# Odoo MCP Agent
+
+This agent helps you interact with Odoo ERP systems through a set of specialized tools.
+
+## Common Odoo Models
+- `res.partner` - Contacts (customers, suppliers, etc.)
+- `sale.order` - Sales orders/quotations
+- `purchase.order` - Purchase orders
+- `account.move` - Invoices, bills, and accounting entries
+- `product.template` - Product information
+- `product.product` - Product variants
+- `stock.move` - Inventory movements
+- `project.task` - Project tasks
+
+## Working with Odoo Domains
+Odoo uses domain expressions for filtering records. Domains are lists of criteria:
+
+```
+[
+  ["field_name", "operator", value],
+  ["another_field", "operator", value]
+]
+```
+
+### Common Operators
+- `=`, `!=`: Equality/inequality
+- `>`, `>=`, `<`, `<=`: Comparison
+- `like`, `ilike`: Pattern matching (% is wildcard)
+- `in`, `not in`: Value in list
+- `child_of`: Hierarchical search
+- `&`, `|`, `!`: Logical operators (default is &)
+
+### Domain Examples
+- Active companies: `[["is_company", "=", true], ["active", "=", true]]`
+- Recent sales: `[["create_date", ">", "2023-01-01"]]`
+- Specific status: `[["state", "in", ["draft", "sent"]]]`
+- Name search: `[["name", "ilike", "%search term%"]]`
+
+## Important Fields by Model
+- res.partner: name, email, phone, is_company, country_id
+- sale.order: name, partner_id, date_order, amount_total, state
+- product.template: name, list_price, default_code, categ_id, type
+- account.move: name, partner_id, invoice_date, amount_total, state
+
+## Tips for Effective Queries
+1. Always limit your result set when possible
+2. Use proper field types (dates as strings, IDs as integers)
+3. For relational fields, use the ID (integer) in domains
+4. For complex data analysis, use read_group for server-side aggregation
+5. Retrieve only the fields you need by specifying the fields parameter
+
+## Common Workflows
+- Get model data: Use model_info to explore fields
+- Find records: Use search_read with appropriate domains
+- Count records: Use search_count for quick counts
+- Analyze data: Use read_group for aggregations
+"""
+
 # Create MCP server
 mcp = FastMCP(
-    "Odoo MCP Server",
+    name="Odoo MCP Server", 
     description="MCP Server for interacting with Odoo ERP systems",
     dependencies=["requests"],
     lifespan=app_lifespan,
+    prompt=ODOO_PROMPT,
 )
 
 
@@ -134,8 +195,19 @@ def search_records_resource(model_name: str, domain: str) -> str:
 # ----- MCP Tools -----
 
 @mcp.tool(description="List all available models in the Odoo system")
-def list_models(ctx: Context,) -> Dict[str, Any]:
-    """Lists all available models in the Odoo system"""
+def list_models(ctx: Context) -> Dict[str, Any]:
+    """
+    Retrieves all available models in the Odoo system.
+    
+    Returns a dictionary mapping model technical names to their display names.
+    Common models include: res.partner, sale.order, account.move, product.template
+    
+    Example response:
+    {
+        "res.partner": {"name": "Contact"},
+        "sale.order": {"name": "Sales Order"}
+    }
+    """
     try:
         odoo_client = get_odoo_client()
         models = odoo_client.get_models()
@@ -144,16 +216,41 @@ def list_models(ctx: Context,) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@mcp.tool(description="Get detailed information about a specific model including fields")
+@mcp.tool(description="Get detailed information about a specific Odoo model including its fields definitions")
 def model_info(
     ctx: Context,
     model_name: str,
 ) -> Dict[str, Any]:
     """
-    Get information about a specific model
+    Retrieves detailed information about an Odoo model including its fields definitions.
 
     Parameters:
-        model_name: Name of the Odoo model (e.g., 'res.partner')
+        model_name: Technical name of the Odoo model (e.g., 'res.partner', 'sale.order')
+    
+    Returns information about:
+    - Model name and description
+    - All available fields with their types, labels, help text, and constraints
+    - Field attributes (readonly, required, selection values, related fields, etc)
+    
+    Common field types in Odoo:
+    - char: Text field (limited length)
+    - text: Multiline text field
+    - integer: Integer field
+    - float: Decimal number field
+    - boolean: True/False field
+    - date: Date field
+    - datetime: Date and time field
+    - many2one: Relation to a single record of another model
+    - one2many: Relation to multiple records where this model is referenced
+    - many2many: Relation to multiple records with a join table
+    - selection: Field with predefined selection options
+    - binary: Binary data field (for files/images)
+    
+    
+    Examples:
+        - Contact model: model_name="res.partner"
+        - Sales model: model_name="sale.order"
+        - Product model: model_name="product.template"
     """
     try:
         odoo_client = get_odoo_client()
@@ -165,42 +262,66 @@ def model_info(
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@mcp.tool(description="Get detailed information of a specific record by ID")
+@mcp.tool(description="Get detailed information of a specific record by ID from an Odoo model")
 def read(
     ctx: Context,
     model_name: str,
-    record_id: str,
+    record_id: Union[str, int],
+    fields: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
-    Get a specific record by ID
+    Retrieves a specific record by ID from an Odoo model.
 
     Parameters:
-        model_name: Name of the Odoo model (e.g., 'res.partner')
-        record_id: ID of the record
+        model_name: Technical name of the Odoo model (e.g., 'res.partner', 'sale.order')
+        record_id: Database ID of the record to retrieve
+        fields: List of specific fields to retrieve. If None, all fields are retrieved.
+               Common fields by model:
+               - res.partner: name, email, phone, street, city, country_id, is_company
+               - sale.order: name, partner_id, date_order, amount_total, state
+               - product.template: name, list_price, default_code, categ_id
+               
+    Examples:
+        - Get contact: model_name="res.partner", record_id=5
+        - Get sale order with specific fields: model_name="sale.order", record_id=42, fields=["name", "amount_total", "state"]
     """
     try:
         odoo_client = get_odoo_client()
         record_id_int = int(record_id)
-        record = odoo_client.read_records(model_name, [record_id_int])
+        record = odoo_client.read_records(model_name, [record_id_int], fields)
         _logger.info(record)
         if not record:
-            return {"success": False, "error": f"Record {record_id_int} not found."}
+            return {"success": False, "error": f"Record {record_id_int} not found in model {model_name}."}
         return {"success": True, "result": record}
+    except ValueError:
+        return {"success": False, "error": f"Invalid record ID: {record_id}. Must be a valid integer."}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@mcp.tool(description="Count records matching the domain")
+@mcp.tool(description="Count records matching the domain criteria in an Odoo model")
 def search_count(
     ctx: Context,
     model_name: str,
-    domain: List[str|List[str]] = [],
-) -> int:
+    domain: List[Union[str, List[Any]]] = [],
+) -> Dict[str, Any]:
     """
-    Search for records that match a domain
+    Counts records in an Odoo model that match specified criteria.
 
     Parameters:
-        model_name: Name of the Odoo model (e.g., 'res.partner')
-        domain: Search domain
+        model_name: Technical name of the Odoo model (e.g., 'res.partner', 'sale.order')
+        domain: Odoo domain filter expressed as a list of conditions. Each condition is a list with 3 elements:
+               [field_name, operator, value]
+               
+               Common operators: =, !=, >, >=, <, <=, like, ilike, in, not in, child_of
+               
+    Examples:
+        - Count all contacts: model_name="res.partner", domain=[]
+        - Count companies: model_name="res.partner", domain=[["is_company", "=", true]]
+        - Count draft sales: model_name="sale.order", domain=[["state", "=", "draft"]]
+        - Count recent invoices: model_name="account.move", domain=[
+            ["type", "=", "out_invoice"], 
+            ["date", ">", "2023-01-01"]
+          ]
     """
     try:
         odoo_client = get_odoo_client()
@@ -210,62 +331,103 @@ def search_count(
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@mcp.tool(description="Search for records matching the domain")
+@mcp.tool(description="Search and read records from an Odoo model that match specified criteria")
 def search_read(
     ctx: Context,
     model_name: str,
-    domain: List[str|List[str]] = [],
+    domain: List[Union[str, List[Any]]] = [],
     fields: Optional[List[str]] = None,
     limit: Optional[int] = None,
+    offset: Optional[int] = None,
+    order: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Search for records that match a domain
+    Search and read records from an Odoo model that match specified criteria.
 
     Parameters:
-        model_name: Name of the Odoo model (e.g., 'res.partner')
-        domain: Search domain
-        fields: Select field
+        model_name: Technical name of the Odoo model (e.g., 'res.partner', 'sale.order')
+        domain: Odoo domain filter expressed as a list of conditions. Each condition is a list with 3 elements:
+               [field_name, operator, value]
+               
+               Common operators: =, !=, >, >=, <, <=, like, ilike, in, not in, child_of
+        fields: List of field names to retrieve. If None, all fields are retrieved.
+               Common fields by model:
+               - res.partner: name, email, phone, street, city, country_id, is_company
+               - sale.order: name, partner_id, date_order, amount_total, state
+               - product.template: name, list_price, default_code, categ_id
+        limit: Maximum number of records to return (default: all records)
+        offset: Number of records to skip (for pagination)
+        order: Sort order specification (e.g., "name ASC", "create_date DESC")
+               
+    Examples:
+        - All contacts: model_name="res.partner"
+        - Companies only: model_name="res.partner", domain=[["is_company", "=", true]]
+        - Recent sales: model_name="sale.order", domain=[["create_date", ">", "2023-01-01"]]
+        - Products by category: model_name="product.template", domain=[["categ_id", "=", 4]]
     """
     try:
         odoo_client = get_odoo_client()
         kwargs = {}
-        if fields != None:
+        if fields is not None:
             kwargs['fields'] = fields
-        if limit != None:
+        if limit is not None:
             kwargs['limit'] = limit
+        if offset is not None:
+            kwargs['offset'] = offset
+        if order is not None:
+            kwargs['order'] = order
         results = odoo_client.execute_method(model_name, 'search_read', domain, **kwargs)
         _logger.info(results)
         return {"success": True, "result": results}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@mcp.tool(description="Aggregates and groups model records by one or more fields. Returns a list of grouped dictionaries with aggregated data. Fields to include or aggregate, optionally using functions like count, sum, avg, min, max (e.g., 'amount_total:sum', 'state')")
+@mcp.tool(description="Group and aggregate data from Odoo models with optional aggregation functions")
 def read_group(
     ctx: Context,
     model_name: str,
-    domain: List[str|List[str]] = [],
-    fields: Optional[List[str]] = None,
+    domain: List[Union[str, List[Any]]] = [],
+    fields: List[str] = [],
     groupby: List[str] = [],
+    lazy: Optional[bool] = True,
 ) -> Dict[str, Any]:
     """
-    Aggregates and groups model records by one or more fields, optionally computing aggregates like counts, sums, or averages. Returns a list of grouped dictionaries with aggregated data.
+    Groups and aggregates records from an Odoo model, similar to SQL GROUP BY with aggregate functions.
 
     Parameters:
-        model_name: Name of the Odoo model (e.g., 'res.partner')
-        domain: List of filter conditions (e.g., [('state', '=', 'sale')])
-        fields: Fields to include or aggregate, optionally using functions like count, sum, avg, min, max (e.g., 'amount_total:sum', 'state')
-        groupby: List of fields to group by (e.g., ['state'])
+        model_name: Technical name of the Odoo model (e.g., 'sale.order', 'account.move')
+        domain: Odoo domain filter expressed as a list of conditions. Each condition is a list with 3 elements:
+               [field_name, operator, value]
+        fields: Fields to include or aggregate, optionally using functions like count, sum, avg, min, max.
+               Format: ['field_name', 'field_name:function']
+               Examples:
+               - 'amount_total:sum' - sum of amount_total field
+               - 'line_ids:count' - count of related lines
+               - 'price:avg' - average price
+        groupby: List of fields to group by. These can be date fields with special intervals.
+               Examples:
+               - ['partner_id'] - group by partner
+               - ['date:month'] - group by month
+               - ['product_id', 'categ_id'] - group by product and category
+               - [] - no grouping, just aggregation of all matching records
+        lazy: If True, only the first groupby level is computed (better performance)
+               
+    Examples:
+        - Sales by customer: model_name="sale.order", fields=["amount_total:sum"], groupby=["partner_id"]
+        - Invoice totals by month: model_name="account.move", fields=["amount_total:sum"], groupby=["date:month"]
+        - Product sales by category: model_name="product.template", fields=["qty_sold:sum"], groupby=["categ_id"]
+        - Total sales: model_name="sale.order", fields=["amount_total:sum"], groupby=[]
     """
-    if len(fields) == 0:
-        return {"success": False, "error": "Argument fields must not empty"}
+    if not fields:
+        return {"success": False, "error": "The 'fields' parameter must not be empty"}
     
     try:
         odoo_client = get_odoo_client()
         kwargs = {}
-        if fields != None:
-            kwargs['fields'] = fields
-        if groupby != None:
-            kwargs['groupby'] = groupby
+        kwargs['fields'] = fields
+        kwargs['groupby'] = groupby
+        kwargs['lazy'] = lazy
+        
         results = odoo_client.execute_method(model_name, 'read_group', domain, **kwargs)
         _logger.info(results)
         return {"success": True, "result": results}
