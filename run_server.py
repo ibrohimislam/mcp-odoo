@@ -40,9 +40,14 @@ def main() -> int:
         
         # Run server in HTTP mode
         _logger.info("Starting Odoo MCP server with HTTP transport...")
-        app = mcp.get_app()
-        # Add host route for development
-        app.router.routes.append(Host('mcp.acme.corp', app=app))
+        
+        # Create a Starlette app and mount the FastMCP SSE app
+        app = Starlette(
+            routes=[
+                Mount('/', app=mcp.sse_app()),
+                Host('mcp.acme.corp', app=mcp.sse_app())
+            ]
+        )
                 
         uvicorn.run(app, host='0.0.0.0', port=8000)
         _logger.info("MCP server stopped normally")

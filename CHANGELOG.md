@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Upgraded MCP dependency from 0.1.1 to 1.6.0
 - Updated server implementation to use the new MCP 1.6.0 API
+- Fixed imports to match MCP 1.6.0 package structure (Context → RequestContext)
 - Changed FastMCP initialization to use named parameters
 - Enhanced type hints using precise typing (List, Union, etc.)
 - Reimplemented __main__.py to directly use the MCP API for serving HTTP requests
