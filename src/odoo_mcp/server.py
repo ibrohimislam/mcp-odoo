@@ -302,7 +302,7 @@ def read(
 def search_count(
     ctx: Context,
     model_name: str,
-    domain: List[Union[str, List[Any]]] = [],
+    domain: List[Union[str, List[str]]] = [],
 ) -> Dict[str, Any]:
     """
     Counts records in an Odoo model that match specified criteria.
@@ -335,7 +335,7 @@ def search_count(
 def search_read(
     ctx: Context,
     model_name: str,
-    domain: List[Union[str, List[Any]]] = [],
+    domain: List[Union[str, List[str]]] = [],
     fields: Optional[List[str]] = None,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
@@ -386,7 +386,7 @@ def search_read(
 def read_group(
     ctx: Context,
     model_name: str,
-    domain: List[Union[str, List[Any]]] = [],
+    domain: List[Union[str, List[str]]] = [],
     fields: List[str] = [],
     groupby: List[str] = [],
     lazy: Optional[bool] = True,
